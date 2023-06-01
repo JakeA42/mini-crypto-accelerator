@@ -1,9 +1,9 @@
 module AES_top_mod(
     input clk_i,
     input rst_i,
-    input [0:127] plaintext,
-    input [0:127] key,
-    output [0:127] ciphertext
+    input [127:0] plaintext,
+    input [255:0] key,
+    output [127:0] ciphertext
 );
 
 // blocks = divide_into_blocks(plaintext)

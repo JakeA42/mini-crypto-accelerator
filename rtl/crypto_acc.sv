@@ -13,8 +13,8 @@
 
 
 module crypto_acc #(
-	BUS_WIDTH = 32
-	BASE_ADDRESS = 32'hF4000000
+	parameter BUS_WIDTH = 32,
+	parameter BASE_ADDRESS = 32'hF4000000
 ) (
 	input clk_i,
 	input rst_i,
@@ -25,14 +25,16 @@ module crypto_acc #(
 	output logic [BUS_WIDTH-1:0] data_o
 );
 
+// Memory map:
 localparam ctrl_reg_addr        = 32'h00000000; // RW
-localparam status_reg_addr      = 32'h00000001; // RW
-localparam key_len_reg_addr     = 32'h00000101; // RW
-localparam data_len_reg_addr    = 32'h00000102; // RW
-localparam result_len_reg_addr  = 32'h00000103; // R
-localparam key_buf_reg_addr     = 32'h00001zzz; // RW
-localparam data_buf_reg_addr    = 32'h00002zzz; // RW
-localparam result_buf_reg_addr  = 32'h00003zzz; // R
+localparam opts_reg_addr        = 32'h00000004; // RW
+localparam status_reg_addr      = 32'h00000008; // R
+localparam key_len_reg_addr     = 32'h00000104; // RW
+localparam data_len_reg_addr    = 32'h00000108; // RW
+localparam result_len_reg_addr  = 32'h0000010c; // R
+localparam key_buf_reg_addr     = 32'h00004zzz; // RW
+localparam data_buf_reg_addr    = 32'h00008zzz; // RW
+localparam result_buf_reg_addr  = 32'h0000czzz; // R
 
 logic key_len_reg;
 logic data_len_reg;
@@ -42,7 +44,7 @@ always_ff @(posedge clk_i) begin
 		key_len_reg <= '0;
 		data_len_reg <= '0;
 	end else if (write_en_i) begin
-		casez (addr)
+		casez (addr - BASE_ADDRESS)
 			key_len_reg_addr:  key_len_reg  <= data_i;
 			data_len_reg_addr: data_len_reg <= data_i;
 			key_buf_reg_addr: begin
