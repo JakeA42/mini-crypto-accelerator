@@ -1,62 +1,33 @@
+`timescale 1ns / 1ps
+
 module shift_rows(
     input clk_i,
     input rst_i,
     input fwd_ninv_i, // encrypt on high signal
     input [127:0] in_state,
-    output [127:0] out_state
+    output logic [127:0] out_state
 );
-logic [7:0] in_bytes [0:15];
-logic [7:0] out_bytes [0:15];
-assign in_bytes = in_state;
-if(fwd_ninv_i) begin
-    // encrypt logic
-    // row 1 - don't shift
-    assign out_bytes[0] = in_bytes[0];
-    assign out_bytes[1] = in_bytes[1];
-    assign out_bytes[2] = in_bytes[2];
-    assign out_bytes[3] = in_bytes[3];
-    // row 2 - shift 1
-    assign out_bytes[4] = in_bytes[5];
-    assign out_bytes[5] = in_bytes[6];
-    assign out_bytes[6] = in_bytes[7];
-    assign out_bytes[7] = in_bytes[4];
-    // row 3 - shift 2
-    assign out_bytes[8] = in_bytes[10];
-    assign out_bytes[9] = in_bytes[11];
-    assign out_bytes[10] = in_bytes[8];
-    assign out_bytes[11] = in_bytes[9];
-    // row 4 - shift 3
-    assign out_bytes[12] = in_bytes[15];
-    assign out_bytes[13] = in_bytes[12];
-    assign out_bytes[14] = in_bytes[13];
-    assign out_bytes[15] = in_bytes[14];
-end 
-else begin
-    // decrypt logic
-    // row 1 - don't shift
-    assign out_bytes[0] = in_bytes[0];
-    assign out_bytes[1] = in_bytes[1];
-    assign out_bytes[2] = in_bytes[2];
-    assign out_bytes[3] = in_bytes[3];
-    // row 2 - shift 1
-    assign out_bytes[4] = in_bytes[];
-    assign out_bytes[5] = in_bytes[];
-    assign out_bytes[6] = in_bytes[];
-    assign out_bytes[7] = in_bytes[];
-    // row 3 - shift 2
-    assign out_bytes[8] = in_bytes[];
-    assign out_bytes[9] = in_bytes[];
-    assign out_bytes[10] = in_bytes[];
-    assign out_bytes[11] = in_bytes[];
-    // row 4 - shift 3
-    assign out_bytes[12] = in_bytes[];
-    assign out_bytes[13] = in_bytes[];
-    assign out_bytes[14] = in_bytes[];
-    assign out_bytes[15] = in_bytes[];
 
+logic [31:0] row0, row1, row2, row3;
+
+
+   always @(posedge clk_i or posedge rst_i) begin
+    if (rst_i) begin
+        out_state <= 0;
+    end else if (fwd_ninv_i) begin
+        row0 = in_state[127:96];
+        row1 = {in_state[87:80], in_state[79:72], in_state[71:64], in_state[95:88]};
+        row2 = {in_state[47:40], in_state[39:32], in_state[63:56], in_state[55:48]};
+        row3 = {in_state[7:0], in_state[31:24], in_state[23:16], in_state[15:8]};
+        out_state = {row0, row1, row2, row3};
+        
+    end else begin
+        row0 = in_state[127:96];
+        row1 = {in_state[71:64], in_state[95:88], in_state[87:80], in_state[79:72]};
+        row2 = {in_state[47:40], in_state[39:32], in_state[63:56], in_state[55:48]};
+        row3 = {in_state[23:16], in_state[15:8], in_state[7:0], in_state[31:24]};
+        out_state = {row0, row1, row2, row3};
+    end
 end
 
-
-
-
-assign out_state = out_bytes;
+endmodule
