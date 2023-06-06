@@ -24,6 +24,10 @@ aes_mix_columns dut_dec(
 	.col_o(vec_cycled)
 );
 
+sub_bytes dut2(
+
+);
+
 
 	logic [7:0] mul2_expect [0:255] = {
 		8'h00,8'h02,8'h04,8'h06,8'h08,8'h0a,8'h0c,8'h0e,8'h10,8'h12,8'h14,8'h16,8'h18,8'h1a,8'h1c,8'h1e,

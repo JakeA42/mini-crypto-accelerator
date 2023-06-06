@@ -1,8 +1,9 @@
 module AES_top_mod(
     input clk_i,
     input rst_i,
-    input [127:0] plaintext,
-    input [255:0] key,
+    input fwd_ninv_i,
+    input [127:0] plaintext_i,
+    input [255:0] key_i,
     output [127:0] ciphertext
 );
 

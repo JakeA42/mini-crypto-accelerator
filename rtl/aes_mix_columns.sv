@@ -10,9 +10,9 @@
 //////////////////////////////////////////////
 
 
-module aes_mix_columns (
-	input clk_i,
-	input rst_i,
+module aes_mix_single_column (
+	// input clk_i,
+	// input rst_i,
 	input fwd_ninv_i,
 	input logic  [31:0] col_i,
 	output logic [31:0] col_o
@@ -94,4 +94,75 @@ module aes_mix_columns (
 		bytes_buf[2] = gmul1b(rows[0]) ^ gmul1a(rows[1]) ^ gmul2(rows[2]) ^ gmul3(rows[3]);
 		bytes_buf[3] = gmul3(rows[0]) ^ gmul1b(rows[1]) ^ gmul1a(rows[2]) ^ gmul2(rows[3]);
 	end
+endmodule
+
+module aes_mix_columns (
+	input clk_i,
+	input rst_i,
+	input fwd_ninv_i,
+	input logic  [127:0] block_i, // big endian
+	output logic [127:0] block_o
+);
+
+	// logic [1:0] col_num;
+	logic [31:0] col_pre;
+	logic [31:0] col_post;
+	logic [31:0] icols [0:3];
+	logic [31:0] ocols [0:3];
+	logic [127:0] block_post;
+
+	assign {block_post[127:120],block_post[95:88],block_post[63:56],block_post[31:24]} = ocols[0];
+	assign {block_post[119:112],block_post[87:80],block_post[55:48],block_post[23:16]} = ocols[1];
+	assign {block_post[111:104],block_post[79:72],block_post[47:40],block_post[15:8]} = ocols[2];
+	assign {block_post[103:96], block_post[71:64],block_post[39:32],block_post[7:0]} = ocols[3];
+
+	always_comb begin
+		icols[0] = {block_i[127:120],block_i[95:88],block_i[63:56],block_i[31:24]};
+		icols[1] = {block_i[119:112],block_i[87:80],block_i[55:48],block_i[23:16]};
+		icols[2] = {block_i[111:104],block_i[79:72],block_i[47:40],block_i[15:8]};
+		icols[3] = {block_i[103:96], block_i[71:64],block_i[39:32],block_i[7:0]};
+
+		// col_pre = icols[col_num];
+	end
+
+	always_ff @(posedge clk_i) begin
+		if (rst_i) begin
+			block_o <= '0;
+		end else begin
+			block_o <= block_post;
+		end
+	end
+
+	aes_mix_single_column c0 (
+		.fwd_ninv_i(fwd_ninv_i),
+		.col_i(icols[0]),
+		.col_o(ocols[0])
+	);
+	aes_mix_single_column c1 (
+		.fwd_ninv_i(fwd_ninv_i),
+		.col_i(icols[1]),
+		.col_o(ocols[1])
+	);
+	aes_mix_single_column c2 (
+		.fwd_ninv_i(fwd_ninv_i),
+		.col_i(icols[2]),
+		.col_o(ocols[2])
+	);
+	aes_mix_single_column c3 (
+		.fwd_ninv_i(fwd_ninv_i),
+		.col_i(icols[3]),
+		.col_o(ocols[3])
+	);
+
+	// always_ff @(posedge clk_i) begin
+	// 	if (rst_i) begin
+	// 		col_num <= 2'd0;
+	// 	end else if (block_ready_i || col_num != 2'd0) begin
+	// 		col_num <= col_num + 2'd1;
+	// 	end
+	// end
+
+	
+
+	
 endmodule
