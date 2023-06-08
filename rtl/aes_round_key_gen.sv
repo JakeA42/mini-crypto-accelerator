@@ -1,18 +1,39 @@
+/* 
+KeyExpansion(byte key[4*Nk], word w[Nb*(Nr+1)], Nk)
+begin
+    word temp
+    i = 0
+    while (i < Nk)
+        w[i] = word(key[4*i], key[4*i+1], key[4*i+2], key[4*i+3])
+        i = i+1
+    end while
+    i = Nk
+    while (i < Nb * (Nr+1)]
+        temp = w[i-1]
+        if (i mod Nk = 0)
+            temp = SubWord(RotWord(temp)) xor Rcon[i/Nk]
+        else if (Nk > 6 and i mod Nk = 4)
+            temp = SubWord(temp)
+        end if
+        w[i] = w[i-Nk] xor temp
+        i = i + 1
+    end while
+end
+
+*/
 
 
 
 
-
-module key_single_round #(
-    parameter rcon
-) (
+module key_single_round (
+    input [7:0] rcon,
     input [127:0] key_i,
-    output logic [127:0] key_o,
+    output logic [127:0] key_o
 );
 
     logic [31:0] icols [0:3];
     logic [31:0] ocols [0:3];
-    logic [127:0] key_post;
+    logic [127:0] key_post, block_i;
 
     assign {key_post[127:120],key_post[95:88],key_post[63:56],key_post[31:24]} = ocols[0];
     assign {key_post[119:112],key_post[87:80],key_post[55:48],key_post[23:16]} = ocols[1];
@@ -25,10 +46,6 @@ module key_single_round #(
         icols[2] = {block_i[111:104],block_i[79:72],block_i[47:40],block_i[15:8]};
         icols[3] = {block_i[103:96], block_i[71:64],block_i[39:32],block_i[7:0]};
     end
-
-    function [31:0] rotword (input [31:0] a);
-        rotword = {a[7:0], a[31:8]};
-    endfunction
 
     logic [7:0] sbox [0:255] = '{
         8'h63, 8'h7c, 8'h77, 8'h7b, 8'hf2, 8'h6b, 8'h6f, 8'hc5, 8'h30, 8'h01, 8'h67, 8'h2b, 8'hfe, 8'hd7, 8'hab, 8'h76,
@@ -49,6 +66,15 @@ module key_single_round #(
         8'h8c, 8'ha1, 8'h89, 8'h0d, 8'hbf, 8'he6, 8'h42, 8'h68, 8'h41, 8'h99, 8'h2d, 8'h0f, 8'hb0, 8'h54, 8'hbb, 8'h16
     };
 
+    function [31:0] rotword (input [31:0] a);
+        rotword = {a[7:0], a[31:8]};
+    endfunction
+
+    function [31:0] subword (input [31:0] a);
+        subword = {sbox[a[31:24]], sbox[a[23:16]], sbox[a[15:8]], sbox[a[7:0]]};
+    endfunction
+
+
     
 
     
@@ -57,7 +83,42 @@ endmodule
 
 
 module aes_round_key_gen (
-
+    
 );
 
+    logic [7:0] rcon [0:9] = '{
+        8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80, 8'h1b, 8'h36
+    };
+
+
+
+endmodule
+
+module aes_key_expansion (
+    input [127:0] initial_key,
+    output logic [127:0] round_keys [0:10]
+);
+
+    logic [7:0] rcon [0:9] = '{
+        8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80, 8'h1b, 8'h36
+    };
+
+    logic [127:0] current_key;
+
+    key_single_round round_gen(
+        .rcon,
+        .key_i(current_key),
+        .key_o(current_key)
+    );
+
+    integer i;
+
+    always_comb begin
+        current_key = initial_key;
+        for (i = 0; i < 10; i = i + 1) begin
+            round_keys[i] = current_key;
+            round_gen.rcon = rcon[i];
+            round_gen.key_i = current_key;
+        end
+    end
 endmodule
