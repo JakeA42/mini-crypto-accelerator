@@ -26,26 +26,36 @@ end
 
 
 module key_single_round (
+    input clk_i,
+    input rst_i,
+    input clk_en_i,
     input [7:0] rcon,
+    input [31:0] iv,
     input [127:0] key_i,
-    output logic [127:0] key_o
+    output logic [127:0] key_o,
+    output logic key_valid_o
 );
 
-    logic [31:0] icols [0:3];
-    logic [31:0] ocols [0:3];
+    logic [31:0] irows [0:3];
+    logic [31:0] orows [0:3];
     logic [127:0] key_post, block_i;
 
-    assign {key_post[127:120],key_post[95:88],key_post[63:56],key_post[31:24]} = ocols[0];
-    assign {key_post[119:112],key_post[87:80],key_post[55:48],key_post[23:16]} = ocols[1];
-    assign {key_post[111:104],key_post[79:72],key_post[47:40],key_post[15:8]} = ocols[2];
-    assign {key_post[103:96], key_post[71:64],key_post[39:32],key_post[7:0]} = ocols[3];
+    assign key_o = key_post;
+    assign block_i = key_i;
 
-    always_comb begin
-        icols[0] = {block_i[127:120],block_i[95:88],block_i[63:56],block_i[31:24]};
-        icols[1] = {block_i[119:112],block_i[87:80],block_i[55:48],block_i[23:16]};
-        icols[2] = {block_i[111:104],block_i[79:72],block_i[47:40],block_i[15:8]};
-        icols[3] = {block_i[103:96], block_i[71:64],block_i[39:32],block_i[7:0]};
-    end
+    // assign {key_post[127:120],key_post[95:88],key_post[63:56],key_post[31:24]} = orows[0];
+    // assign {key_post[119:112],key_post[87:80],key_post[55:48],key_post[23:16]} = orows[1];
+    // assign {key_post[111:104],key_post[79:72],key_post[47:40],key_post[15:8]} = orows[2];
+    // assign {key_post[103:96], key_post[71:64],key_post[39:32],key_post[7:0]} = orows[3];
+
+    assign key_post = {orows[0], orows[1], orows[2], orows[3]};
+    assign {irows[0], irows[1], irows[2], irows[3]} = block_i;
+    // always_comb begin
+    //     irows[0] = {block_i[127:120],block_i[95:88],block_i[63:56],block_i[31:24]};
+    //     irows[1] = {block_i[119:112],block_i[87:80],block_i[55:48],block_i[23:16]};
+    //     irows[2] = {block_i[111:104],block_i[79:72],block_i[47:40],block_i[15:8]};
+    //     irows[3] = {block_i[103:96], block_i[71:64],block_i[39:32],block_i[7:0]};
+    // end
 
     logic [7:0] sbox [0:255] = '{
         8'h63, 8'h7c, 8'h77, 8'h7b, 8'hf2, 8'h6b, 8'h6f, 8'hc5, 8'h30, 8'h01, 8'h67, 8'h2b, 8'hfe, 8'hd7, 8'hab, 8'h76,
@@ -67,58 +77,132 @@ module key_single_round (
     };
 
     function [31:0] rotword (input [31:0] a);
-        rotword = {a[7:0], a[31:8]};
+        rotword = {a[23:0], a[31:24]};
     endfunction
 
     function [31:0] subword (input [31:0] a);
         subword = {sbox[a[31:24]], sbox[a[23:16]], sbox[a[15:8]], sbox[a[7:0]]};
     endfunction
 
+    logic [31:0] rcon_full;
+    logic [31:0] rotated;
+    logic [31:0] subbed;
+    logic [31:0] temp;
+    logic [31:0] orow;
+    logic [1:0] row_num;
+    assign rcon_full = {rcon, 24'd0};
 
-    
+    assign rotated = rotword(row_num == 0 ? iv : orows[row_num - 2'd1]);
+    assign subbed = subword(rotated);
+    assign temp = subbed ^ rcon_full;
+    assign orow = ((row_num == 0) ? temp : orows[row_num - 2'd1]) ^ irows[row_num];
 
-    
-endmodule
-
-
-
-module aes_round_key_gen (
-    
-);
-
-    logic [7:0] rcon [0:9] = '{
-        8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80, 8'h1b, 8'h36
-    };
-
-
-
-endmodule
-
-module aes_key_expansion (
-    input [127:0] initial_key,
-    output logic [127:0] round_keys [0:10]
-);
-
-    logic [7:0] rcon [0:9] = '{
-        8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80, 8'h1b, 8'h36
-    };
-
-    logic [127:0] current_key;
-
-    key_single_round round_gen(
-        .rcon,
-        .key_i(current_key),
-        .key_o(current_key)
-    );
-
-    integer i;
-
-    always_comb begin
-        current_key = initial_key;
-        for (i = 0; i < 10; i = i + 1) begin
-            round_keys[i] = current_key;
-            round_gen.rcon = rcon[i];
-            round_gen.key_i = current_key;
+    always_ff @(posedge clk_i) begin
+        if (rst_i) begin
+            orows[0] <= '0;
+            orows[1] <= '0;
+            orows[2] <= '0;
+            orows[3] <= '0;
+            key_valid_o <= '0;
+            row_num <= '0;
+        end else if (clk_en_i) begin
+            orows[row_num] <= orow;
+            key_valid_o <= (row_num == 2'd3);
+            row_num <= row_num + 2'd1;
         end
     end
+
+    
+endmodule
+
+
+module aes_key_expansion (
+    input clk_i,
+    input rst_i,
+    input begin_key_gen_i,
+    input [127:0] initial_key,
+    output logic [127:0] round_keys [0:9],
+    output logic round_keys_done [0:9]
+);
+    localparam max_round = 4'd9;
+
+    localparam ST_NOT_STARTED = 2'd0;
+    localparam ST_ACTIVE = 2'd1;
+    localparam ST_VALID_OUT = 2'd2;
+    logic [1:0] state, next_state;
+
+    logic [3:0] round_num;
+
+    logic [7:0] rcon [1:10] = '{
+        8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80, 8'h1b, 8'h36
+    };
+
+    logic clk_en_rg;
+    logic current_key_o_valid;
+
+    logic [31:0] round_key_iv;
+
+    logic [127:0] current_key_in;
+    logic [127:0] current_key_out;
+
+
+    assign round_key_iv = round_keys[round_num][31:0];
+
+    key_single_round round_gen(
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .rcon(rcon[round_num]),
+        .clk_en_i(clk_en_rg),
+        .iv(round_key_iv),
+        .key_i(current_key_in),
+        .key_o(current_key_out),
+        .key_valid_o(current_key_o_valid)
+    );
+
+    always_ff @(posedge clk_i) begin
+        if (rst_i) begin
+            state <= ST_NOT_STARTED;
+        end else begin
+            state <= next_state;
+        end
+    end
+
+    always_ff @(posedge clk_i) begin
+        if (rst_i || state != ST_ACTIVE) begin
+            round_num <= '0;
+            round_keys_done <= '0;
+        end else begin
+            if (round_num == 4'd0) begin
+                round_num <= round_num + 4'd1;
+                round_keys[round_num] <= initial_key;
+                round_keys_done[round_num] <= 1'd1;
+            end else if (current_key_o_valid) begin
+                round_num <= round_num + 4'd1;
+                round_keys[round_num] <= current_key_out;
+                round_keys_done[round_num] <= 1'd1;
+            end
+        end
+    end
+
+    always_comb begin
+        clk_en_rg = 0;
+
+        case (state)
+            ST_NOT_STARTED: begin
+                next_state = begin_key_gen_i ? ST_ACTIVE : ST_NOT_STARTED;
+            end
+            ST_ACTIVE: begin
+                next_state = (round == max_round) ? ST_VALID_OUT : ST_ACTIVE;
+                clk_en_rg = 1;
+            end
+            ST_VALID_OUT: begin
+                next_state = begin_key_gen_i ? ST_ACTIVE : ST_VALID_OUT;
+            end
+            default: begin
+                $display("round_key_gen STATE ERROR");
+                next_state = ST_NOT_STARTED;
+            end
+        endcase
+    end
+
 endmodule
