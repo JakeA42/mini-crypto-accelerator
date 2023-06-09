@@ -22,6 +22,21 @@ module tb_key_gen ();
     	.key_valid_o(key_valid)
 	);
 
+
+    logic begin_key_gen;
+ 
+    logic [127:0] round_keys [0:9];
+    logic round_keys_done [0:9];
+
+	aes_key_expansion dut2 (
+        .clk_i(clk),
+        .rst_i(rst),
+        .begin_key_gen_i(begin_key_gen),
+        .initial_key(key_initial),
+        .round_keys(round_keys),
+        .round_keys_done(round_keys_done)
+	);
+
 	logic [7:0] rcon_lut [1:10] = '{
         8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80, 8'h1b, 8'h36
     };
@@ -30,10 +45,13 @@ module tb_key_gen ();
 	initial begin
 		rst = '1;
 		round_num = 4'd1;
+		begin_key_gen = '1;
 		key_initial = 128'h2b7e151628aed2a6abf7158809cf4f3c;
 
 		#20 rst = '0;
-		#300 $finish;
+		#10 begin_key_gen = '0;
+
+		#1000 $finish;
 	end
 
 	always begin

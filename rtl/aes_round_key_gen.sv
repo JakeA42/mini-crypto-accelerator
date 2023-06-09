@@ -129,12 +129,13 @@ module aes_key_expansion (
     localparam ST_NOT_STARTED = 2'd0;
     localparam ST_ACTIVE = 2'd1;
     localparam ST_VALID_OUT = 2'd2;
-    logic [1:0] state, next_state;
 
+    logic [1:0] state, next_state;
+    logic reset_keys;
     logic [3:0] round_num;
 
-    logic [7:0] rcon [1:10] = '{
-        8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80, 8'h1b, 8'h36
+    logic [7:0] rcon [0:10] = '{
+        8'h01, 8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80, 8'h1b, 8'h36
     };
 
     logic clk_en_rg;
@@ -146,7 +147,8 @@ module aes_key_expansion (
     logic [127:0] current_key_out;
 
 
-    assign round_key_iv = round_keys[round_num][31:0];
+    assign round_key_iv = (round_num == 0) ? initial_key[31:0] : round_keys[round_num-4'd1][31:0];
+    assign current_key_in = (round_num == 0) ? initial_key : round_keys[round_num-4'd1];
 
     key_single_round round_gen(
         .clk_i(clk_i),
@@ -168,38 +170,45 @@ module aes_key_expansion (
     end
 
     always_ff @(posedge clk_i) begin
-        if (rst_i || state != ST_ACTIVE) begin
+        if (rst_i || reset_keys) begin
             round_num <= '0;
-            round_keys_done <= '0;
-        end else begin
+            round_keys_done <= '{default: '0};
+            round_keys <= '{default: '0};
+        end else if (state == ST_ACTIVE) begin
             if (round_num == 4'd0) begin
                 round_num <= round_num + 4'd1;
                 round_keys[round_num] <= initial_key;
                 round_keys_done[round_num] <= 1'd1;
+                current_key_in <= initial_key;
             end else if (current_key_o_valid) begin
                 round_num <= round_num + 4'd1;
                 round_keys[round_num] <= current_key_out;
                 round_keys_done[round_num] <= 1'd1;
+                current_key_in <= current_key_out;
             end
         end
     end
 
     always_comb begin
         clk_en_rg = 0;
-
+        next_state = state;
+        reset_keys = 0;
+        //round_key_iv = initial_key[31:0];
         case (state)
             ST_NOT_STARTED: begin
                 next_state = begin_key_gen_i ? ST_ACTIVE : ST_NOT_STARTED;
             end
             ST_ACTIVE: begin
-                next_state = (round == max_round) ? ST_VALID_OUT : ST_ACTIVE;
+                next_state = (round_num == max_round) ? ST_VALID_OUT : ST_ACTIVE;
                 clk_en_rg = 1;
+                //round_key_iv = round_keys[round_num-4'd1][31:0];
             end
             ST_VALID_OUT: begin
-                next_state = begin_key_gen_i ? ST_ACTIVE : ST_VALID_OUT;
+                if (begin_key_gen_i) begin
+                    next_state = ST_ACTIVE;
+                end
             end
             default: begin
-                $display("round_key_gen STATE ERROR");
                 next_state = ST_NOT_STARTED;
             end
         endcase
