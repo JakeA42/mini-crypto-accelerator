@@ -25,8 +25,8 @@ module tb_key_gen ();
 
     logic begin_key_gen;
  
-    logic [127:0] round_keys [0:9];
-    logic round_keys_done [0:9];
+    logic [127:0] round_keys [0:10];
+    logic round_keys_done [0:10];
 
 	aes_key_expansion dut2 (
         .clk_i(clk),

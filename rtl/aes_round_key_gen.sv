@@ -121,10 +121,10 @@ module aes_key_expansion (
     input rst_i,
     input begin_key_gen_i,
     input [127:0] initial_key,
-    output logic [127:0] round_keys [0:9],
-    output logic round_keys_done [0:9]
+    output logic [127:0] round_keys [0:10],
+    output logic round_keys_done [0:10]
 );
-    localparam max_round = 4'd9;
+    localparam num_rounds = 4'd11;
 
     localparam ST_NOT_STARTED = 2'd0;
     localparam ST_ACTIVE = 2'd1;
@@ -152,7 +152,7 @@ module aes_key_expansion (
 
     key_single_round round_gen(
         .clk_i(clk_i),
-        .rst_i(rst_i),
+        .rst_i(rst_i || current_key_o_valid),
         .rcon(rcon[round_num]),
         .clk_en_i(clk_en_rg),
         .iv(round_key_iv),
@@ -199,7 +199,7 @@ module aes_key_expansion (
                 next_state = begin_key_gen_i ? ST_ACTIVE : ST_NOT_STARTED;
             end
             ST_ACTIVE: begin
-                next_state = (round_num == max_round) ? ST_VALID_OUT : ST_ACTIVE;
+                next_state = (round_num == num_rounds) ? ST_VALID_OUT : ST_ACTIVE;
                 clk_en_rg = 1;
                 //round_key_iv = round_keys[round_num-4'd1][31:0];
             end
