@@ -179,12 +179,12 @@ module aes_key_expansion (
                 round_num <= round_num + 4'd1;
                 round_keys[round_num] <= initial_key;
                 round_keys_done[round_num] <= 1'd1;
-                current_key_in <= initial_key;
+                //current_key_in <= initial_key;
             end else if (current_key_o_valid) begin
                 round_num <= round_num + 4'd1;
                 round_keys[round_num] <= current_key_out;
                 round_keys_done[round_num] <= 1'd1;
-                current_key_in <= current_key_out;
+                //current_key_in <= current_key_out;
             end
         end
     end

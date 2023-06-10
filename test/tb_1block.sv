@@ -32,7 +32,7 @@ module tb_1block ();
 	AES_top_mod dut (
 		.clk_i(clk),
 		.rst_i(rst),
-		.decrypt_i(0),
+		.decrypt_i(decrypt),
 		.load_key_i(loadkey),
 		.indata_valid_i(in_valid),
 		.indata_ready_o(in_ready),
@@ -41,11 +41,14 @@ module tb_1block ();
 		.outdata_o(data_out),
 		.outdata_valid_o(data_out_valid)
 	);
+	
+	logic [127:0] data_reg;
 
 	initial begin
 		rst = '1;
 		@(posedge clk);
 		loadkey = '1;
+		decrypt = '0;
 		key_initial = 128'h2b7e151628aed2a6abf7158809cf4f3c;
 		//key_initial = 128'h2b28ab097eaef7cf15d2154f16a6883c;
 		in_valid = 0;
@@ -57,9 +60,22 @@ module tb_1block ();
 		@(posedge clk && in_ready);
 		in_valid = 1;
 		data_in = 128'h3243f6a8885a308d313198a2e0370734;
+		@(posedge clk);
+		in_valid = '0;
+		data_in = '0;
 		//data_in = 128'h328831e0435a3137f6309807a88da234;
 		
 		@(posedge clk && data_out_valid);
+		data_reg = data_out;
+		@(posedge clk);
+		decrypt = '1;
+		data_in = data_reg;
+		in_valid = '1;
+		@(posedge clk);
+		in_valid = '0;
+		@(posedge clk && data_out_valid);
+		assert (data_out == 128'h3243f6a8885a308d313198a2e0370734)
+		else $display("failed");
 		#30 $finish;
 	end
 

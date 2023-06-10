@@ -135,13 +135,15 @@ module AES_top_mod(
                 ST_IDLE: begin
                     if (load_key_i) begin
                         next_state = ST_KEY_LOAD;
-                        begin_keygen = '1;
+                        //begin_keygen = '1;
                         loadkey = '1;
                     end
                 end
                 ST_KEY_LOAD: begin
                     if (round_keys_done[9]) begin
                         next_state = ST_READY;
+                    end else begin
+                        begin_keygen = '1;
                     end
                 end
                 ST_READY: begin
