@@ -206,10 +206,12 @@ module aes_key_expansion (
             ST_VALID_OUT: begin
                 if (begin_key_gen_i) begin
                     next_state = ST_ACTIVE;
+                    reset_keys = 1;
                 end
             end
             default: begin
                 next_state = ST_NOT_STARTED;
+                reset_keys = 1;
             end
         endcase
     end

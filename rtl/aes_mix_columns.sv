@@ -96,7 +96,7 @@ module aes_mix_single_column (
 	end
 endmodule
 
-module aes_mix_columns (
+module mix_columns (
 	input clk_i,
 	input rst_i,
 	input fwd_ninv_i,

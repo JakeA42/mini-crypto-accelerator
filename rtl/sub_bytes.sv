@@ -64,7 +64,7 @@ module sub_bytes (
 
     // repeat above three lines for inv_*
     for (i = 0; i < 16; i++) begin
-        assign inv_in_bytes[i] = inv_in_state[(i*8)+7:(i*8)];
+        assign inv_in_bytes[i] = in_state[(i*8)+7:(i*8)];
         assign inv_out_bytes[i] = inv_sbox[inv_in_bytes[i]];
         assign inv_out_unbuf[(i*8)+7:(i*8)] = inv_out_bytes[i];
     end
